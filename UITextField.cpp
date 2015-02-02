@@ -1,17 +1,26 @@
 #include <UIGUI.h>
+#include <UIScreen.h>
 #include <UITextField.h>
 #include <iostream>
 #include <stdio.h>
 
+#define CARET_TIME_MS (500)
+
 using namespace std;
+
+Uint32 caretTimerCallback(Uint32 interval, void *param)
+{
+	UIScreen::setNeedRedraw();
+	return interval;
+}
 
 UITextField::UITextField(uint32_t inId, uint32_t inX, uint32_t inY, uint32_t inWidth, uint32_t inHeight, uint32_t inMessage, string inCaption, string inFontName, uint32_t inFontSize, SDL_Color &inColor)
  : UIControl(inId, inX, inY, inWidth, inHeight, inMessage)
 {
 	string fontSuffix = ".ttf";
 	mString = inCaption;
-	mTextSurface = NULL;
-	mTextShadowSurface = NULL;
+	mTextTexture = NULL;
+	mTextShadowTexture = NULL;
 	mFontSize = inFontSize;
 	mColor = inColor;
 	mFontPath = "c:\\WINDOWS\\Fonts\\";
@@ -20,141 +29,76 @@ UITextField::UITextField(uint32_t inId, uint32_t inX, uint32_t inY, uint32_t inW
 	RenderText();
 	mLastTicks = SDL_GetTicks();
 	mCaretToggle = 0;
+	mTimerId = 0;
 }
 
 UITextField::~UITextField()
 {
-	SDL_FreeSurface(mTextSurface);
-	SDL_FreeSurface(mTextShadowSurface);
+	SDL_DestroyTexture(mTextTexture);
+	SDL_DestroyTexture(mTextShadowTexture);
 }
 
 void UITextField::RenderText()
 {
-	TTF_Font *font;
-
-	if (mTextSurface)
-	{
-		SDL_FreeSurface(mTextSurface);
-		SDL_FreeSurface(mTextShadowSurface);
-		mTextSurface = NULL;
-		mTextShadowSurface = NULL;
+	if (mTextTexture) {
+		SDL_DestroyTexture(mTextTexture);
+	}
+	if (mTextShadowTexture) {
+		SDL_DestroyTexture(mTextShadowTexture);
 	}
 
-	if (mString.length() == 0)
-	{
-		return;
-	}
-
-	font = TTF_OpenFont(mFontPath.c_str(), mFontSize);
-	if (!font)
-	{
-		cerr << "Count not load font " << mFontPath.c_str() << " at size " << mFontSize;
-		exit(2);
-	}
-
-	TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
-
-	mTextSurface = TTF_RenderText_Blended(font, mString.c_str(), mIsTracking ? UIGUI::TrackingColor : mHasFocus ? UIGUI::FocusColor : mColor);
-	mTextShadowSurface = TTF_RenderText_Blended(font, mString.c_str(), UIGUI::ShadowColor);
-
-    TTF_CloseFont(font);
-#if 0
-    if (mRect.w < mTextSurface->w)
-    {
-    	mRect.w = mTextSurface->w;
-    }
-    if (mRect.h < mTextSurface->h)
-    {
-    	mRect.h = mTextSurface->h;
-    }
-#endif
+	mTextTexture = UIGUI::RenderText(mString, mFontPath, mFontSize, mHasFocus ? UIGUI::FocusColor : mColor);
+	mTextShadowTexture = UIGUI::RenderText(mString, mFontPath, mFontSize, UIGUI::ShadowColor);
+	UIScreen::setNeedRedraw();
 }
 
 void UITextField::Render()
 {
-	SDL_Rect clipRect = mRect;
-	uint32_t x, y, h, w;
+	SDL_Rect rect = mRect;
+	int32_t width = 0, height = 0;
+	SDL_QueryTexture(mTextTexture, NULL, NULL, &width, &height);
+   	rect.x += 4;
+   	rect.y += 4;
+   	rect.w = width;
+   	rect.h = height;
 
-	clipRect.x += 4;
-	clipRect.w -= 8;
+	SDL_Color *drawColor = (SDL_Color*) &(mHasFocus ? UIGUI::FocusColor : mColor);
+	SDL_Color *fillColor = (SDL_Color*) &(UIGUI::BackgroundColor);
 
-	SDL_Color *lineColor = &(mIsTracking ? UIGUI::TrackingColor : mHasFocus ? UIGUI::FocusColor : mColor);
+	SDL_SetRenderDrawColor(mRenderer, fillColor->r, fillColor->g, fillColor->b, fillColor->a);
+	SDL_SetRenderDrawBlendMode(mRenderer, SDL_BLENDMODE_BLEND);
+	SDL_RenderFillRect(mRenderer, &mRect);
 
-	if (SDL_GetTicks() - mLastTicks > 500)
-	{
+	SDL_SetRenderDrawColor(mRenderer, drawColor->r, drawColor->g, drawColor->b, drawColor->a);
+	SDL_SetRenderDrawBlendMode(mRenderer, SDL_BLENDMODE_NONE);
+	SDL_RenderDrawRect(mRenderer, &mRect);
+
+	if (mHasFocus) { // Draw the caret 
 		mCaretToggle = mCaretToggle ? 0 : 1;
-		mLastTicks = SDL_GetTicks();
-	}
-
-	if (mHasFocus) // Draw the caret
-	{
-		if (mTextSurface)
-		{
-			h = mTextSurface->h;
-			w = mTextSurface->w;
-		}
-		else
-		{
-			h = mRect.h;
-			w = 2;
-		}
-
-		if (mCaretToggle && mHasFocus)
-		{
-			for(uint32_t y=4; y<h-3; y++)
-			{
-				if (mRect.x+w + 4 < clipRect.x + clipRect.w)
-				{
-					DrawPixel(mRect.x+w + 5,  mRect.y+y, *lineColor);
-					DrawPixel(mRect.x+w + 6, mRect.y+y, *lineColor);
-				}
-			}
+		SDL_Rect caretRect;
+		caretRect.x = mRect.x + width + 6;
+		caretRect.y = mRect.y+5;
+		caretRect.w = 2;
+		caretRect.h = mRect.h-10;
+		if (mCaretToggle) {
+			SDL_SetRenderDrawColor(mRenderer, UIGUI::FocusColor.r, UIGUI::FocusColor.g, UIGUI::FocusColor.b, UIGUI::FocusColor.a);
+			SDL_SetRenderDrawBlendMode(mRenderer, SDL_BLENDMODE_NONE);
+			SDL_RenderFillRect(mRenderer, &caretRect);
 		}
 	}
 
-	// Draw the border
-	for(x=0; x<mRect.w; x++)
-	{
-		DrawPixel(mRect.x+x, mRect.y, *lineColor);
-		DrawPixel(mRect.x+x, mRect.y+1, *lineColor);
-		DrawPixel(mRect.x+x, mRect.y+mRect.h-1, *lineColor);
-		DrawPixel(mRect.x+x, mRect.y+mRect.h, *lineColor);
-	}
-
-	for(y=0; y<mRect.h; y++)
-	{
-		DrawPixel(mRect.x, mRect.y+y, *lineColor);
-		DrawPixel(mRect.x+1, mRect.y+y, *lineColor);
-		DrawPixel(mRect.x+mRect.w-1, mRect.y+y, *lineColor);
-		DrawPixel(mRect.x+mRect.w, mRect.y+y, *lineColor);
-	}
-
-	if (mTextSurface != NULL)
-	{
-		SDL_SetClipRect(mSurface, &clipRect);
-
-
-		SDL_Rect shadowRect = clipRect;
-		if (mColor.r != UIGUI::ShadowColor.r || mColor.g != UIGUI::ShadowColor.g || mColor.b != UIGUI::ShadowColor.b)
-		{
-			if (mFontSize > 25)
-			{
-				shadowRect.x += 2;
-				shadowRect.y += 2;
-			}
-			else
-			{
-				shadowRect.x++;
-				shadowRect.y++;
-			}
-			SDL_BlitSurface(mTextShadowSurface, NULL, mSurface, &shadowRect);
+	SDL_Rect shadowRect = rect;
+	if (mColor.r != UIGUI::ShadowColor.r || mColor.g != UIGUI::ShadowColor.g || mColor.b != UIGUI::ShadowColor.b) {
+		if (mFontSize > 25) {
+			shadowRect.x += 2;
+			shadowRect.y += 2;
+		} else {
+			shadowRect.x++;
+			shadowRect.y++;
 		}
-
-		SDL_BlitSurface(mTextSurface, NULL, mSurface, &clipRect);
-
-
-		SDL_SetClipRect(mSurface, NULL);
+		SDL_RenderCopy(mRenderer, mTextShadowTexture, NULL, &shadowRect);
 	}
+	SDL_RenderCopy(mRenderer, mTextTexture, NULL, &rect);
 }
 
 void UITextField::SetCaption(string inNewCaption)
@@ -184,29 +128,32 @@ void UITextField::StoppedTracking()
 
 void UITextField::StartedFocus()
 {
+	mCaretToggle = 1;
+	SDL_StartTextInput();
+	mTimerId = SDL_AddTimer(CARET_TIME_MS, caretTimerCallback, NULL);
 	RenderText();
 }
+
 void UITextField::StoppedFocus()
 {
+	(void) SDL_RemoveTimer(mTimerId);
+	mTimerId = 0;
 	RenderText();
+	SDL_StopTextInput();
 }
 
 uint32_t UITextField::HandleKeyDownEvent(SDL_Event *inEvent)
 {
-	if (inEvent->type == SDL_KEYDOWN)
-	{
+	if (inEvent->type == SDL_KEYDOWN) {
 		switch (inEvent->key.keysym.sym) {
 			case SDLK_RETURN:
 				return mMessage;
 				break;
 			case SDLK_BACKSPACE:
 			case SDLK_DELETE:
-				if (mString.length() > 1)
-				{
+				if (mString.length() > 1) {
 					mString = mString.substr(0, mString.length()-1);
-				}
-				else
-				{
+				} else {
 					mString.assign("");
 				}
 				break;
@@ -220,13 +167,21 @@ uint32_t UITextField::HandleKeyDownEvent(SDL_Event *inEvent)
 				// Accept input
 
 		}
-#if 0
-		if (inEvent->key.keysym.unicode != SDLK_BACKSPACE && inEvent->key.keysym.unicode != 0)
-		{
-			char temp[2] = { (char) inEvent->key.keysym.unicode & 0xff, 0};
-			mString.append(temp);
+	} else if (inEvent->type == SDL_TEXTINPUT) {
+		// TODO: Handle scrolling text fields for arbitrary string lengths
+		int32_t width, height;
+		SDL_TextInputEvent *event = (SDL_TextInputEvent*) inEvent;
+		string newString = mString;
+		newString.append(event->text);
+		// TODO: User int TTF_SizeUTF8(TTF_Font *font, const char *text, int *w, int *h);
+		SDL_Texture *newText = UIGUI::RenderText(newString, mFontPath, mFontSize, mColor);
+		SDL_QueryTexture(newText, NULL, NULL, &width, &height);
+		SDL_DestroyTexture(newText);
+		if (width < mRect.w-2*6) {
+			mString.append(event->text);
+			mCaretToggle = 1;
 		}
-#endif
+
 	}
 
 	RenderText();

@@ -25,7 +25,7 @@ SDL_Color UIGUI::Transparent =    {   0, 0, 0, 0};
 // Color used when mouse button is down and we are tracking a control
 SDL_Color UIGUI::TrackingColor = {0x55, 0xaa,    0, 0};
 // Color used when contol received focus
-SDL_Color UIGUI::FocusColor    = {0xff, 0xff, 0xff, 0};
+SDL_Color UIGUI::FocusColor    = {0x00, 0xff, 0x00, 0};
 // Shadow color, not used when the text has the same color as the shadow color
 SDL_Color UIGUI::ShadowColor   = {   0,    0,   0, 0};
 
@@ -322,14 +322,9 @@ SDL_Texture* UIGUI::RenderText(string inString, string inFontPath, uint32_t inFo
 
 	assert(font);
 
-//	cout << "Rendering '" << inString.c_str() << "'\n";
 
 //	TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
-#if 1
-	surface = TTF_RenderText_Blended(font, inString.c_str(), inColor);
-#else
-	surface = TTF_RenderText_Solid(font, inString.c_str(), inColor);
-#endif
+	surface = TTF_RenderUTF8_Blended(font, inString.c_str(), inColor);
 	assert(surface);
 
 	SDL_Texture* texture = SDL_CreateTextureFromSurface(gRenderer, surface);

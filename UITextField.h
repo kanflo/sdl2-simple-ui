@@ -1,7 +1,8 @@
 #ifndef __UITEXTFIELD_H__
 #define __UITEXTFIELD_H__
 
-#include <UITextField.h>
+#include <UIElement.h>
+#include <UIControl.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <string>
@@ -30,12 +31,13 @@ class UITextField : private UIControl
 		void RenderText();
 
 		string mString;
-		SDL_Surface *mTextSurface;
-		SDL_Surface *mTextShadowSurface;
+		SDL_Texture *mTextTexture;
+		SDL_Texture *mTextShadowTexture;
 		string mFontPath;
 		uint32_t mFontSize;
 		SDL_Color mColor;
 		uint32_t mLastTicks;
 		uint32_t mCaretToggle;
+		SDL_TimerID mTimerId;
 };
 #endif // __UITEXTFIELD_H__

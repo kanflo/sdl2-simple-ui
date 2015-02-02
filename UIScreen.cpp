@@ -140,6 +140,8 @@ bool UIScreen::handleEvent(SDL_Event *inEvent)
 	bool handledEvent = false;
 	switch(inEvent->type) {
 		case SDL_KEYDOWN:
+//		case SDL_TEXTEDITING:
+		case SDL_TEXTINPUT:
 			handledEvent = true;
 #ifdef UIGUI_VERBOSE
 			fprintf(stderr, "Key down\n");

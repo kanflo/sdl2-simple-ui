@@ -17,6 +17,8 @@ UIMenu::UIMenu(UIGUI *ui)
 	mUI = ui;
 	mButtonCount = 0;
 	mScreen = new UIScreen(mUI);
+	SDL_Color bgColor = {64, 64, 128, 255};
+	mScreen->setBackgroundColor(bgColor);
 }
 
 UIMenu::~UIMenu()
