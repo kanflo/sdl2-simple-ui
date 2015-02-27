@@ -9,13 +9,14 @@
 
 using std::string;
 
-class UICaption : protected UIElement
+class UICaption : public UIElement
 {
 	public:
 		UICaption(uint32_t inId, uint32_t inX, uint32_t inY, uint32_t inWidth, uint32_t inHeight, string inCaption, string inFontName, uint32_t inFontSize, SDL_Color &inColor, uiguiTextAdjust inAdjust);
 		void Render();
 		~UICaption();
 		void setCaption(string inNewCaption);
+		void setColor(SDL_Color &color) { mColor = color; RenderText(); };
 
 		bool MayReceiveFocus();
 		void StartedTracking();

@@ -7,6 +7,9 @@
 #include <iostream>
 #include <string>
 #include <assert.h>
+#ifdef CONFIG_HUMAN_INPUT
+#include <UIHumanInput.h>
+#endif // CONFIG_HUMAN_INPUT
 
 using std::string;
 
@@ -38,6 +41,9 @@ class UIGUI
 		UIGUI(uint32_t inWidth, uint32_t inHeight, uint32_t inCustomMousePointer = true);
 		virtual ~UIGUI();
 		void run(UIScreen *inScreen, SDL_Event *event);
+#ifdef CONFIG_HUMAN_INPUT
+		void renderCursor();
+#endif // CONFIG_HUMAN_INPUT
 		static SDL_Renderer* GetRenderer();
 //		SDL_Surface* GetSurface();
 
@@ -45,13 +51,12 @@ class UIGUI
 		static uint32_t DisplayYesNoMessage(string message);
 		static SDL_Texture* RenderText(string inString, string inFontPath, uint32_t inFontSize, SDL_Color &inColor);
 		static SDL_Point* getWindowSize();
+		uint32_t getEventType() { return mEventType; };
 
 	protected:
 		virtual void Render();
 
 		uint32_t mEventType;
-		uint32_t mWidth;
-		uint32_t mHeight;
 		SDL_Window *mWindow;
 		SDL_Renderer *mRenderer;
 		SDL_Surface *mSurface;
@@ -60,6 +65,9 @@ class UIGUI
 		SDL_Rect mMousePosition;
 
 		bool mLastMouseButtonPressed;
+#ifdef CONFIG_HUMAN_INPUT
+		UIHumanInput *mHumanInput;
+#endif // CONFIG_HUMAN_INPUT
 
 	public:
 		static SDL_Color White;

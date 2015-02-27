@@ -37,11 +37,9 @@ SDL_Color UIGUI::TrackingBackgroundColor = {0x20, 0x20, 0x20, 128};
 UIGUI::UIGUI(uint32_t inWidth, uint32_t inHeight, uint32_t inCustomMousePointer)
 {
 	g_gui = this;
-
 //	SDL_Surface *temp;
-
-	mWidth = inWidth;
-	mHeight = inHeight;
+	uint32_t screenWidth, screenHeight;
+	int32_t windowWidth, windowHeight;
 	mMousePointer = NULL;
 	mBackgroundTile = NULL;
 
@@ -56,14 +54,24 @@ UIGUI::UIGUI(uint32_t inWidth, uint32_t inHeight, uint32_t inCustomMousePointer)
 //    (void) SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 
 	// Set the video mode, go fullscreen
-	mWindow = SDL_CreateWindow("UIGUI", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, inWidth, inHeight, 0);
-	gWindowSize.x = inWidth;
-	gWindowSize.y = inHeight;
-	printf("Error: %s\n", SDL_GetError());
-	assert(mWindow);
+	mWindow = NULL;
+	while (!mWindow) {
+		mWindow = SDL_CreateWindow("UIGUI", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, inWidth, inHeight, 0);
+		if (!mWindow) {
+			printf("Error: %s\n", SDL_GetError());
+			system("sudo reboot");
+//	                system("/root/scripts/launch-demo.sh &");
+        	        exit(1);
+		}
+	}
+
 	mRenderer = SDL_CreateRenderer(mWindow, -1, 0);
 	assert(mRenderer);
 	gRenderer = mRenderer;
+
+#ifdef CONFIG_HUMAN_INPUT
+	mHumanInput = new UIHumanInput(id_Any);
+#endif // CONFIG_HUMAN_INPUT
 
 	// Get the current video hardware information
 ///	const SDL_VideoInfo* myPointer = SDL_GetVideoInfo();
@@ -76,20 +84,29 @@ UIGUI::UIGUI(uint32_t inWidth, uint32_t inHeight, uint32_t inCustomMousePointer)
 
     // Get current display mode of all displays.
     for(i = 0; i < SDL_GetNumVideoDisplays(); ++i) {
-        int err = SDL_GetCurrentDisplayMode(i, &current);
-        if(err != 0) {
+        if(SDL_GetCurrentDisplayMode(i, &current) != 0) {
             // In case of error...
-            SDL_Log("Could not get display mode for video display #%d: %s", i, SDL_GetError());
+            printf("Could not get display mode for video display #%d: %s", i, SDL_GetError());
 //			assert(0);
         } else {
             // On success, print the current display mode.
-            SDL_Log("Display #%d: current display mode is %dx%dpx @ %dhz. \n", i, current.w, current.h, current.refresh_rate);
-            mWidth = current.w;
-            mHeight = current.h;
+            printf("Display #%d: current display mode is %dx%dpx @ %dhz. \n", i, current.w, current.h, current.refresh_rate);
+			screenWidth = current.w;
+			screenHeight = current.h;
         }
     }
 
+	SDL_GetWindowSize(mWindow, &windowWidth, &windowHeight);
+	printf("Screen size : %dx%d, window size : %dx%d\n", screenWidth, screenHeight, windowWidth, windowHeight);
+	if (windowWidth < screenWidth) {
+		gWindowSize.x = windowWidth;
+		gWindowSize.y = windowHeight;
+	} else {
+		gWindowSize.x = screenWidth;
+		gWindowSize.y = screenHeight;
+	}
 
+	printf("Screen realestate is %dx%d\n", gWindowSize.x, gWindowSize.y);
 #if 0
 	if (inCustomMousePointer)
 	{
@@ -171,7 +188,15 @@ void UIGUI::run(UIScreen *inScreen, SDL_Event *event)
 		/* look for an event */
 		if (SDL_PollEvent(event)) {
 #endif
-			if (event->type == mEventType) {
+			//printf("Event type %d\n", event->type);
+			if (event->type == SDL_MOUSEMOTION) {
+#ifdef CONFIG_HUMAN_INPUT
+				mHumanInput->moveTo(event->motion.x, event->motion.y);
+#endif // CONFIG_HUMAN_INPUT
+				//inScreen->Render();
+			} else if (event->type == SDL_USEREVENT) {
+				//return;
+			} else if (event->type == mEventType) {
 				if (event->user.code == event_Redraw) {
 					eventHandled = true;
 					// Redraw
@@ -254,7 +279,7 @@ void UIGUI::run(UIScreen *inScreen, SDL_Event *event)
 			inScreen->Render();
 
 			if (!eventHandled) {
-//				printf("Event not handled, returning\n");
+				//printf("Event not handled, returning\n");
 				return;
 			}
 		}
@@ -340,3 +365,10 @@ SDL_Point* UIGUI::getWindowSize()
 {
 	return &gWindowSize;
 }
+
+#ifdef CONFIG_HUMAN_INPUT
+void UIGUI::renderCursor()
+{
+	mHumanInput->Render();
+}
+#endif // CONFIG_HUMAN_INPUT

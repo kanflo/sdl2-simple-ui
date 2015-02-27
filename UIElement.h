@@ -25,6 +25,9 @@ class UIElement
 		void ReceivedTracking();
 		// Called when the element is no longer being tracked
 		void LostTracking();
+		void hide() { mIsHidden = true; };
+		void show() { mIsHidden = false; };
+		bool isHidden() { return mIsHidden; };
 
 		virtual bool MayReceiveFocus();
 		virtual void StartedTracking();
@@ -44,6 +47,7 @@ class UIElement
 		SDL_Renderer *mRenderer;
 		bool mHasFocus;
 		bool mIsTracking;
+		bool mIsHidden;
 };
 
 #endif // __UIELEMENT_H__

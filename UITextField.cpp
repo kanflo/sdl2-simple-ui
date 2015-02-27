@@ -10,6 +10,8 @@ using namespace std;
 
 Uint32 caretTimerCallback(Uint32 interval, void *param)
 {
+	UITextField *field = (UITextField*) param;
+	field->ToggleCaret();
 	UIScreen::setNeedRedraw();
 	return interval;
 }
@@ -74,7 +76,6 @@ void UITextField::Render()
 	SDL_RenderDrawRect(mRenderer, &mRect);
 
 	if (mHasFocus) { // Draw the caret 
-		mCaretToggle = mCaretToggle ? 0 : 1;
 		SDL_Rect caretRect;
 		caretRect.x = mRect.x + width + 6;
 		caretRect.y = mRect.y+5;
@@ -130,7 +131,7 @@ void UITextField::StartedFocus()
 {
 	mCaretToggle = 1;
 	SDL_StartTextInput();
-	mTimerId = SDL_AddTimer(CARET_TIME_MS, caretTimerCallback, NULL);
+	mTimerId = SDL_AddTimer(CARET_TIME_MS, caretTimerCallback, (void*) this);
 	RenderText();
 }
 

@@ -13,6 +13,7 @@ bool gHasCheckedScreenSize = false;
 UIScreen::UIScreen(UIGUI *inUIGUI)
 {
 	assert(inUIGUI);
+	mUI = inUIGUI;
     mRenderer = inUIGUI->GetRenderer();
 	mTracking = NULL;
 	mFocus= NULL;
@@ -21,6 +22,7 @@ UIScreen::UIScreen(UIGUI *inUIGUI)
 	mBgColor.g = 
 	mBgColor.b = 0;
 	mBgColor.a = 255;
+	SDL_SetRenderDrawColor(mRenderer, mBgColor.r, mBgColor.g, mBgColor.b, mBgColor.a);
 
 	mEventType = SDL_RegisterEvents(1);
 	if (mEventType == ((Uint32)-1)) {
@@ -85,8 +87,15 @@ void UIScreen::Render()
 
 		list<UIElement*>::reverse_iterator i;
 		for(i = mElements.rbegin(); i != mElements.rend(); ++i) {
-			(*i)->Render();
+			if (!(*i)->isHidden()) {
+				(*i)->Render();
+			}
 		}
+
+#ifdef CONFIG_HUMAN_INPUT
+		mUI->renderCursor();
+#endif // CONFIG_HUMAN_INPUT
+
 #if 0
 		if (mMousePointer) {
 			// draw the mouse pointer
@@ -115,7 +124,7 @@ UIElement* UIScreen::FindElementAt(int inX, int inY)
 	list<UIElement*>::iterator i;
 
 	for(i = mElements.begin(); i != mElements.end(); ++i) {
-		if ((*i)->WithinBounds(inX, inY)) {
+		if ((*i)->WithinBounds(inX, inY) && !(*i)->isHidden()) {
 			return (*i);
 		}
 	}
@@ -127,12 +136,33 @@ UIElement* UIScreen::FindElementId(int inId)
 	list<UIElement*>::iterator i;
 
 	for(i = mElements.begin(); i != mElements.end(); ++i) {
-		if ((*i)->GetId() == inId) {
+		if ((*i)->GetId() == (uint32_t) inId) {
 			return (*i);
 		}
 	}
 	return NULL;
 }
+
+
+
+void handleSpecialKeys(SDL_Event *event)
+{
+	SDL_Scancode scancode = event->key.keysym.scancode;
+	SDL_Keycode sym = event->key.keysym.sym;
+	Uint16 mod = event->key.keysym.mod;
+
+	if (scancode == 230 && sym == 1073742054 && mod == 257) { // shift-alt-altgr
+		printf("reboot!\n");
+		system("sudo reboot");
+	} else if (scancode == 228 && sym == 1073742052 && mod == 320) { // lctrl-alt-rctrl
+		printf("halt!\n");
+		system("sudo halt");
+	} else if (scancode == 42 && sym == 8 && mod == 257) { // shift-alt-backspace
+		system("/root/scripts/launch-demo.sh &");
+		exit(1);
+	}
+}
+
 
 bool UIScreen::handleEvent(SDL_Event *inEvent)
 {
@@ -143,9 +173,7 @@ bool UIScreen::handleEvent(SDL_Event *inEvent)
 //		case SDL_TEXTEDITING:
 		case SDL_TEXTINPUT:
 			handledEvent = true;
-#ifdef UIGUI_VERBOSE
-			fprintf(stderr, "Key down\n");
-#endif // UIGUI_VERBOSE
+			handleSpecialKeys(inEvent);
 			if (mFocus) {
 				command = mFocus->HandleKeyDownEvent(inEvent);
 				if (command != msg_None) {
@@ -162,7 +190,7 @@ bool UIScreen::handleEvent(SDL_Event *inEvent)
 				fprintf(stderr, "Mouse button down\n");
 #endif // UIGUI_VERBOSE
 				mTracking = FindElementAt(inEvent->motion.x, inEvent->motion.y);
-				printf("Tracking 0x%x\n", mTracking);
+				//printf("Tracking 0x%x\n", mTracking);
 				if (mTracking) {
 #ifdef UIGUI_VERBOSE
 					fprintf(stderr, "Start tracking\n");
@@ -280,4 +308,5 @@ SDL_DisplayMode* UIScreen::getDisplayMode()
 void UIScreen::setBackgroundColor(SDL_Color &color)
 {
 	mBgColor = color;
+	SDL_SetRenderDrawColor(mRenderer, mBgColor.r, mBgColor.g, mBgColor.b, mBgColor.a);
 }

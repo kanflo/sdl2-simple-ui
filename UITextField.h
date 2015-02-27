@@ -9,7 +9,7 @@
 
 using std::string;
 
-class UITextField : private UIControl
+class UITextField : public UIControl
 {
 	public:
 		UITextField(uint32_t inId, uint32_t inX, uint32_t inY, uint32_t inWidth, uint32_t inHeight, uint32_t inMessage, string inCaption, string inFontName, uint32_t inFontSize, SDL_Color &inColor);
@@ -23,6 +23,8 @@ class UITextField : private UIControl
 		void StoppedTracking();
 		void StartedFocus();
 		void StoppedFocus();
+
+		void ToggleCaret() {mCaretToggle = !mCaretToggle; };
 
 		uint32_t HandleKeyDownEvent(SDL_Event *inEvent);
 		uint32_t HandleMouseUpEvent(SDL_Event *inEvent);

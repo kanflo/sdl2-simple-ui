@@ -12,7 +12,7 @@ class UIScreen
 {
 	public:
 		UIScreen(UIGUI *inUIGUI);
-		~UIScreen();
+		virtual ~UIScreen();
 		SDL_Texture *GetTexture();
 		SDL_Renderer* GetRenderer();
 		void AddElement(UIElement *inNewElement);
@@ -42,6 +42,7 @@ class UIScreen
 		list<UIElement*> mElements;
 		SDL_Point mLastClick;
 		SDL_Color mBgColor;
+		UIGUI *mUI;
 };
 
 

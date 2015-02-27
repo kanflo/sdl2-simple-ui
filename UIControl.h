@@ -8,7 +8,7 @@
 
 using std::string;
 
-class UIControl : protected UIElement
+class UIControl : public UIElement
 {
 	public:
 		UIControl(uint32_t inId, uint32_t inX, uint32_t inY, uint32_t inWidth, uint32_t inHeight, uint32_t inMessage);
