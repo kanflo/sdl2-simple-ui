@@ -9,6 +9,32 @@ static int mqttScreenThread(void *ptr)
 	while(1) {
 		int rc = screen->loop();
 		if (rc) {
+			switch(rc) {
+
+				case MOSQ_ERR_SUCCESS:
+					printf("MQTT:success\n");
+					break;
+				case MOSQ_ERR_INVAL:
+					printf("MQTT:input parameters were invalid.\n");
+					break;
+				case MOSQ_ERR_NOMEM:
+					printf("MQTT:out of memory condition occurred.\n");
+					break;
+				case MOSQ_ERR_NO_CONN:
+					printf("MQTT:client isn’t connected to a broker.\n");
+					break;
+				case MOSQ_ERR_CONN_LOST:
+					printf("MQTT:connection to the broker was lost.\n");
+					break;
+				case MOSQ_ERR_PROTOCOL:
+					printf("MQTT:protocol error communicating with the broker.\n");
+					break;
+				case MOSQ_ERR_ERRNO:
+					printf("errno : %d\n", errno);
+					break;
+				default:
+					printf("MQTT:unknown error %d\n", rc);
+			}
 			printf("Notice: MQTT reconnect\n");
 			screen->reconnect();
 		}
